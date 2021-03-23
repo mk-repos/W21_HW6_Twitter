@@ -1,6 +1,6 @@
 #########################################
-##### Name:                         #####
-##### Uniqname:                     #####
+##### Name:       Moeki Kurita      #####
+##### Uniqname:   mkurita           #####
 #########################################
 
 from requests_oauthlib import OAuth1
@@ -18,9 +18,10 @@ access_token = secrets.TWITTER_ACCESS_TOKEN
 access_token_secret = secrets.TWITTER_ACCESS_TOKEN_SECRET
 
 oauth = OAuth1(client_key,
-            client_secret=client_secret,
-            resource_owner_key=access_token,
-            resource_owner_secret=access_token_secret)
+               client_secret=client_secret,
+               resource_owner_key=access_token,
+               resource_owner_secret=access_token_secret)
+
 
 def test_oauth():
     ''' Helper function that returns an HTTP 200 OK response code and a 
@@ -73,7 +74,7 @@ def save_cache(cache_dict):
     dumped_json_cache = json.dumps(cache_dict)
     fw = open(CACHE_FILENAME,"w")
     fw.write(dumped_json_cache)
-    fw.close() 
+    fw.close()
 
 
 def construct_unique_key(baseurl, params):
@@ -96,8 +97,12 @@ def construct_unique_key(baseurl, params):
     string
         the unique key as a string
     '''
-    #TODO Implement function
-    pass
+    concat = []
+    for k, v in params.items():
+        concat.append(f"{k}_{v}")
+    concat.sort()
+    unique = baseurl + "_" + "_".join(concat)
+    return unique
 
 
 def make_request(baseurl, params):
@@ -116,8 +121,8 @@ def make_request(baseurl, params):
         the data returned from making the request in the form of 
         a dictionary
     '''
-    #TODO Implement function
-    pass
+    response = requests.get(baseurl, params=params, auth=oauth)
+    return response.json()
 
 
 def make_request_with_cache(baseurl, hashtag, count):
@@ -138,9 +143,9 @@ def make_request_with_cache(baseurl, hashtag, count):
     baseurl: string
         The URL for the API endpoint
     hashtag: string
-        The hashtag to search for
-    count: integer
-        The number of results you request from Twitter
+        The hashtag to search (i.e. #MarchMadness2021)
+    count: int
+        The number of tweets to retrieve
     
     Returns
     -------
@@ -148,8 +153,17 @@ def make_request_with_cache(baseurl, hashtag, count):
         the results of the query as a dictionary loaded from cache
         JSON
     '''
-    #TODO Implement function
-    pass
+    params = {"q": hashtag, "count": count}
+    request_key = construct_unique_key(baseurl=baseurl, params=params)
+    if request_key in CACHE_DICT.keys():
+        print("fetching cached data")
+        return CACHE_DICT[request_key]
+    else:
+        print("making new request")
+        response = make_request(baseurl=baseurl, params=params)
+        CACHE_DICT[request_key] = response
+        save_cache(CACHE_DICT)
+        return response
 
 
 def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
@@ -171,16 +185,24 @@ def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
         queried in make_request_with_cache()
 
     '''
-    # TODO: Implement function 
-    pass
-    ''' Hint: In case you're confused about the hashtag_to_ignore 
-    parameter, we want to ignore the hashtag we queried because it would 
-    definitely be the most occurring hashtag, and we're trying to find 
-    the most commonly co-occurring hashtag with the one we queried (so 
-    we're essentially looking for the second most commonly occurring 
-    hashtags).'''
+    hashtags_list = []
+    # iterate through all the tweets
+    for tweet in tweet_data["statuses"]:
+        # extract a list of hashtag object
+        hashtags = tweet["entities"]["hashtags"]
+        # if hashtag object exist
+        if hashtags:
+            # iterate through all the hashtags
+            for hashtag in hashtags:
+                # store all hashtags with duplicates allowed
+                hashtags_list.append(f"#{hashtag['text'].lower()}")
+    # based on the list of all hashtags with duplicates, count each
+    count_dict = {hashtag: hashtags_list.count(hashtag)
+                  for hashtag in hashtags_list}
+    count_dict[hashtag_to_ignore.lower()] = 0
+    # get most frequent key (hashtag)
+    return max(count_dict, key=lambda key: count_dict[key])
 
-    
 
 if __name__ == "__main__":
     if not client_key or not client_secret:
