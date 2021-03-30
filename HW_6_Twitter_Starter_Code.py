@@ -153,6 +153,7 @@ def make_request_with_cache(baseurl, hashtag, count):
         the results of the query as a dictionary loaded from cache
         JSON
     '''
+    CACHE_DICT = open_cache()  # for autograder
     params = {"q": hashtag, "count": count}
     request_key = construct_unique_key(baseurl=baseurl, params=params)
     if request_key in CACHE_DICT.keys():
